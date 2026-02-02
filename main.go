@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
-	"github.com/influxdata/influxdb-client-go/v2/api/write"
-	"github.com/peterbourgon/ff/v3"
 	"html"
 	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"sync"
+
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/api/write"
+	"github.com/peterbourgon/ff/v3"
 )
 
 var wg sync.WaitGroup
@@ -34,6 +35,7 @@ func main() {
 		influxBucket = fs.String("influx-bucket", "ns", "InfluxDb bucket to use")
 		configFile   = fs.String("config", "", "File to load configuration from")
 		user         = fs.String("user", "", "User name to be set on Influx record")
+		logging      = fs.Bool("log", false, "Enable logging")
 	)
 	if err := ff.Parse(fs, os.Args[1:], ff.WithEnvVarPrefix("NS_EXPORTER")); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -50,7 +52,7 @@ func main() {
 		NewExporterFromMongo(*mongoUri, *mongoDb, *user, ctx).processClient(deviceStatuses, treatments, *limit, *skip, ctx)
 	}
 	if *nsUri != "" && *nsToken != "" {
-		NewExporterFromNS(*nsUri, *nsToken, *user).processClient(deviceStatuses, treatments, *limit, *skip, ctx)
+		NewExporterFromNS(*nsUri, *nsToken, *user, *logging).processClient(deviceStatuses, treatments, *limit, *skip, ctx)
 	}
 	var config = Config{}
 	if *configFile != "" {
@@ -83,7 +85,7 @@ func main() {
 				NewExporterFromMongo(fMongoUri, entry.MongoDb, entry.User, ctx).processClient(deviceStatuses, treatments, climit, cskip, ctx)
 			}
 			if entry.NsUri != "" && entry.NsToken != "" {
-				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User).processClient(deviceStatuses, treatments, climit, cskip, ctx)
+				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User, *logging).processClient(deviceStatuses, treatments, climit, cskip, ctx)
 			}
 		}
 	}

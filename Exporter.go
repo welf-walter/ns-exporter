@@ -15,9 +15,9 @@ func NewExporterFromMongo(uri string, db string, user string, ctx context.Contex
 	return exporter
 }
 
-func NewExporterFromNS(uri string, token string, user string) *Exporter {
+func NewExporterFromNS(uri string, token string, user string, logging bool) *Exporter {
 	exporter := &Exporter{
-		client: NewNSClient(uri, token, user),
+		client: NewNSClient(uri, token, user, logging),
 	}
 	return exporter
 }

@@ -6,14 +6,16 @@ import (
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/go-resty/resty/v2"
 )
-import "github.com/go-resty/resty/v2"
 
 type NSClient struct {
 	nsUri   string
 	nsToken string
 	user    string
 	jwt     string
+	logging bool
 }
 
 type nsDeviceStatusResult struct {
@@ -28,11 +30,12 @@ type nsJwtResult struct {
 	Token string `json:"token"`
 }
 
-func NewNSClient(uri string, token string, user string) *NSClient {
+func NewNSClient(uri string, token string, user string, logging bool) *NSClient {
 	return &NSClient{
 		nsUri:   strings.TrimRight(uri, "/"),
 		nsToken: token,
 		user:    user,
+		logging: logging,
 	}
 }
 
@@ -58,7 +61,7 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 	client := resty.New()
 
 	entries := &nsDeviceStatusResult{}
-	_, err := client.R().
+	response, err := client.R().
 		SetQueryParams(map[string]string{
 			"skip":      strconv.FormatInt(skip, 10),
 			"limit":     strconv.FormatInt(limit, 10),
@@ -69,6 +72,10 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 		SetHeader("Accept", "application/json").
 		SetResult(entries).
 		Get(c.nsUri + "/api/v3/devicestatus")
+
+	if c.logging {
+		log.Printf("Response: %v", response)
+	}
 
 	if err != nil {
 		log.Fatal(err)
@@ -90,7 +97,8 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	client := resty.New()
 
 	entries := &nsTreatmentsResult{}
-	_, err := client.R().
+	response, err := client.R().
+		SetDebug(c.logging).
 		SetQueryParams(map[string]string{
 			"skip":      strconv.FormatInt(skip, 10),
 			"limit":     strconv.FormatInt(limit, 10),
@@ -101,6 +109,10 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 		SetAuthScheme("Bearer").
 		SetAuthToken(c.jwt).
 		Get(c.nsUri + "/api/v3/treatments")
+
+	if c.logging {
+		log.Printf("Response: %v", response)
+	}
 
 	if err != nil {
 		log.Fatal(err)
