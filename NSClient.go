@@ -6,8 +6,9 @@ import (
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/go-resty/resty/v2"
 )
-import "github.com/go-resty/resty/v2"
 
 type NSClient struct {
 	nsUri   string
@@ -23,6 +24,10 @@ type nsDeviceStatusResult struct {
 type nsTreatmentsResult struct {
 	Status  int           `json:"status"`
 	Records []NsTreatment `json:"result"`
+}
+type nsMeasurementsResult struct {
+	Status  int             `json:"status"`
+	Records []NsMeasurement `json:"result"`
 }
 type nsJwtResult struct {
 	Token string `json:"token"`
@@ -48,6 +53,7 @@ func (c *NSClient) Authorize(_ context.Context) {
 		log.Fatal(err)
 	}
 	c.jwt = result.Token
+	fmt.Println("JWT: ", c.jwt)
 }
 
 func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int64, _ context.Context) {
@@ -74,7 +80,9 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 		log.Fatal(err)
 	}
 
+	fmt.Println("LoadDeviceStatuses status: ", entries.Status, "    #Entries: ", len(entries.Records))
 	for _, entry := range entries.Records {
+		log.Println(entry)
 		if strings.HasPrefix(entry.Device, "openaps") {
 			entry.User = c.user
 			queue <- entry
@@ -105,8 +113,45 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("LoadTreatments status: ", entries.Status, "    #Entries: ", len(entries.Records))
 	for _, entry := range entries.Records {
+		log.Println(entry)
 		entry.User = c.user
+		queue <- entry
+	}
+}
+
+func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip int64, _ context.Context) {
+	defer wg.Done()
+
+	fmt.Println("LoadMeasurements from NS, limit: ", limit, ", skip: ", skip)
+
+	client := resty.New()
+
+	resty.New().SetDebug(true)
+
+	entries := &nsMeasurementsResult{}
+	_, err := client.R().
+		SetQueryParams(map[string]string{
+			"skip":  strconv.FormatInt(skip, 10),
+			"limit": strconv.FormatInt(limit, 10),
+			//"sort$desc": "created_at",
+		}).
+		SetResult(entries).
+		EnableTrace().
+		SetHeader("Accept", "application/json").
+		SetAuthScheme("Bearer").
+		SetAuthToken(c.jwt).
+		Get(c.nsUri + "/api/v3/entries")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("LoadMeasurements status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	for _, entry := range entries.Records {
+		log.Println(entry)
+
+		//entry.User = c.user
 		queue <- entry
 	}
 }

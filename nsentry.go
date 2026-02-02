@@ -74,6 +74,22 @@ type NsTreatment struct {
 	User         string    `json:"-"`
 }
 
+// "2026-01-31T20:00:49.000Z"      1769889649000   233     "Flat"  "unknown"
+// "2026-01-31T19:55:48.000Z"      1769889348000   236     "FortyFiveUp"   "unknown"
+//
+//	{"_id":"697e72528e5493c015a6ad1b","sgv":206,
+//	 "date":1769894450000,"dateString":"2026-01-31T21:20:50.000Z",
+//	 "trend":5,"direction":"FortyFiveDown","device":"unknown",
+//	 "type":"sgv","utcOffset":0,"sysTime":"2026-01-31T21:20:50.000Z","mills":1769894450000
+//	}
+type NsMeasurement struct {
+	TimestampStr  string `json:"dateString,omitempty"`
+	TimestampMs   int    `json:"date,omitempty"`
+	SensorGlucose int    `json:"sgv,omitempty"`
+	Arrow         string `json:"direction,omitempty"`
+	Device        string `json:"device,omitempty"`
+}
+
 type Config struct {
 	NsUri        string `json:"ns-uri,omitempty"`
 	NsToken      string `json:"ns-token,omitempty"`

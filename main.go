@@ -44,13 +44,14 @@ func main() {
 
 	deviceStatuses := make(chan NsEntry)
 	treatments := make(chan NsTreatment)
+	measurements := make(chan NsMeasurement)
 	influx := make(chan write.Point)
 
 	if *mongoUri != "" && *mongoDb != "" {
-		NewExporterFromMongo(*mongoUri, *mongoDb, *user, ctx).processClient(deviceStatuses, treatments, *limit, *skip, ctx)
+		NewExporterFromMongo(*mongoUri, *mongoDb, *user, ctx).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
 	if *nsUri != "" && *nsToken != "" {
-		NewExporterFromNS(*nsUri, *nsToken, *user).processClient(deviceStatuses, treatments, *limit, *skip, ctx)
+		NewExporterFromNS(*nsUri, *nsToken, *user).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
 	var config = Config{}
 	if *configFile != "" {
@@ -80,10 +81,10 @@ func main() {
 		for _, entry := range config.Imports {
 			var fMongoUri = combine(*mongoUri, entry.MongoUri)
 			if fMongoUri != "" && entry.MongoDb != "" {
-				NewExporterFromMongo(fMongoUri, entry.MongoDb, entry.User, ctx).processClient(deviceStatuses, treatments, climit, cskip, ctx)
+				NewExporterFromMongo(fMongoUri, entry.MongoDb, entry.User, ctx).processClient(deviceStatuses, treatments, measurements, climit, cskip, ctx)
 			}
 			if entry.NsUri != "" && entry.NsToken != "" {
-				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User).processClient(deviceStatuses, treatments, climit, cskip, ctx)
+				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User).processClient(deviceStatuses, treatments, measurements, climit, cskip, ctx)
 			}
 		}
 	}
@@ -93,6 +94,7 @@ func main() {
 
 	go parseDeviceStatuses(wgTransform, influx, deviceStatuses)
 	go parseTreatments(wgTransform, influx, treatments)
+	//go parseMeasurements(wgTransform, influx, measurements)
 
 	go func() {
 		wgInflux.Add(1)
@@ -126,6 +128,7 @@ func main() {
 	wg.Wait()
 	close(deviceStatuses)
 	close(treatments)
+	close(measurements)
 	wgTransform.Wait()
 	close(influx)
 	wgInflux.Wait()

@@ -22,9 +22,10 @@ func NewExporterFromNS(uri string, token string, user string) *Exporter {
 	return exporter
 }
 
-func (worker Exporter) processClient(deviceStatuses chan NsEntry, treatments chan NsTreatment, limit int64, skip int64, ctx context.Context) {
+func (worker Exporter) processClient(deviceStatuses chan NsEntry, treatments chan NsTreatment, measurements chan NsMeasurement, limit int64, skip int64, ctx context.Context) {
 	worker.client.Authorize(ctx)
 	wg.Add(2)
 	go worker.client.LoadDeviceStatuses(deviceStatuses, limit, skip, ctx)
 	go worker.client.LoadTreatments(treatments, limit, skip, ctx)
+	go worker.client.LoadMeasurements(measurements, limit, skip, ctx)
 }
