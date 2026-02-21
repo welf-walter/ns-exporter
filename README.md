@@ -1,16 +1,47 @@
 # ns-exporter
 Nightscout exporter to InfluxDB
 
+It reads data from Nightscout via v3-api. See {{ns-uri}}/api3-docs for details.
+Then it pushes this data to an [InfluxDB](https://www.influxdata.com/).
+
 ### usage variants:
 1. inline
 ```
 go build
 ./ns-exporter
 ```
+
 2. docker
+
+  1. Option 1 - local build
+
+Build it locally:
 ```
-docker build -t ns-exporter .
-docker run -d ns-exporter:latest
+docker build -t welfwalter/ns-exporter .
+```
+
+Upload to [welf-walter/welfwalter](https://hub.docker.com/repository/docker/welfwalter/welf-walter/general):
+```
+docker push welfwalter/ns-exporter:latest
+```
+
+  2. Option 2 - central build
+  Pushes to `master` branch lead to a central build by Github Action ...
+  (not yet implemented)
+
+  3. Run
+
+Start the container with your parameters:
+```
+docker run -d  \
+  --name ns-exporter \
+  --env NS_EXPORTER_NS_URI=https://abc.eu.nightscoutpro.com \
+  --env NS_EXPORTER_NS_TOKEN=$NIGHTSCOUTTOKEN \
+  --env NS_EXPORTER_INFLUX_URI=https://eu-central-1-1.aws.cloud2.influxdata.com \
+  --env NS_EXPORTER_INFLUX_TOKEN=$INFLUXTOKEN \
+  --env NS_EXPORTER_INFLUX_ORG=xxyyzz \
+  --env NS_EXPORTER_INFLUX_BUCKET=nightscout \
+  welfwalter/ns-exporter:latest
 ```
 
 arguments:
@@ -19,8 +50,8 @@ arguments:
 	mongo-db        - MongoDb database name
 	ns-uri          - Nightscout server url to download from
 	ns-token        - Nigthscout server API Authorization Token
-	limit           - number of records to read from MongoDb
-	skip            - number of records to skip from MongoDb
+	limit           - number of records to read
+	skip            - number of records to skip
 	influx-uri      - InfluxDb uri to download from
 	influx-token    - InfluxDb access token
 	influx-org      - (optional, default = 'ns') InfluxDb organization to use
