@@ -9,6 +9,7 @@ name: Publish Docker image
 on:
   push:
     branches: [ "master" ]
+    tags: [ "v*" ]
 #  pull_request: todo: would required appropriate tag creation
 #    branches: [ "master" ]
 
