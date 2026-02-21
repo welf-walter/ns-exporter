@@ -4,16 +4,16 @@ Nightscout exporter to InfluxDB
 It reads data from Nightscout via v3-api. See {{ns-uri}}/api3-docs for details.
 Then it pushes this data to an [InfluxDB](https://www.influxdata.com/).
 
-### usage variants:
-1. inline
+## usage variants:
+### 1. inline
 ```
 go build
 ./ns-exporter
 ```
 
-2. docker
+### 2. docker
 
-  1. Option 1 - local build
+#### Option 1 - local build
 
 Build it locally:
 ```
@@ -25,11 +25,10 @@ Upload to [welf-walter/welfwalter](https://hub.docker.com/repository/docker/welf
 docker push welfwalter/ns-exporter:latest
 ```
 
-  2. Option 2 - central build
-  Pushes to `master` branch lead to a central build by Github Action ...
-  (not yet implemented)
+#### Option 2 - central build
+  Pushes to `master` branch lead to a central build by [a Github Action](https://github.com/welf-walter/ns-exporter/actions).
 
-  3. Run
+#### Run
 
 Start the container with your parameters:
 ```
@@ -44,7 +43,8 @@ docker run -d  \
   welfwalter/ns-exporter:latest
 ```
 
-arguments:
+## Configuration
+Configuration is done via parameters:
 
 	mongo-uri       - MongoDb uri to download from
 	mongo-db        - MongoDb database name
@@ -59,7 +59,7 @@ arguments:
 	influx-user-tag - (optional, default = 'unknown') InfluxDb 'user' tag value to be added to every record - to be able to store multiple users data in single bucket
 
 
-arguments also can be provided via env with `NS_EXPORTER_` prefix:
+Parameters also can be provided via env with `NS_EXPORTER_` prefix:
 
 	NS_EXPORTER_MONGO_URI=
 	NS_EXPORTER_MONGO_DB=
@@ -81,7 +81,7 @@ Since exporter only requires read access, creating role with two permissions wil
 - api:treatments:read
 - api:devicestatus:read
 
-### Presentation
+## Presentation
 
 I'm using Grafana dashboard for viewing data. To setup grafana with InfluxDB you need to follow InfluxDB's [instructions](https://docs.influxdata.com/influxdb/v2.3/tools/grafana/).
 The sample dashboard can be imported from `grafana.json`. It uses both InfluxQL and Flux datasources for different panels. Some can be omitted, some can be reworker based on other InfluxDB datasource query type. 
