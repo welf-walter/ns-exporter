@@ -64,3 +64,11 @@ jobs:
 #          subject-name: index.docker.io/my-docker-hub-namespace/my-docker-hub-repository
 #          subject-digest: ${{ steps.push.outputs.digest }}
 #          push-to-registry: true
+
+      - name: Comment PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: |
+            Docker images build for tags: ${{ steps.meta.outputs.tags }}
+            Digest: ${{ steps.push.outputs.digest }}
