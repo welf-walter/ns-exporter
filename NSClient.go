@@ -39,10 +39,25 @@ func NewNSClient(uri string, token string, user string, logging bool) *NSClient 
 	}
 }
 
+func logRestyError(response *resty.Response, c *NSClient) {
+	if response.IsError() {
+		log.Println("Error in authorization")
+		log.Println("Status code: ", response.StatusCode())
+		log.Println("Status: ", response.Status())
+		if c.logging {
+			log.Println(response.String())
+		}
+	} else {
+		if c.logging {
+			log.Println("Status: ", response.Status())
+		}
+	}
+}
+
 func (c *NSClient) Authorize(_ context.Context) {
 	client := resty.New()
 	result := &nsJwtResult{}
-	_, err := client.R().
+	response, err := client.R().
 		SetResult(result).
 		SetHeader("Accept", "application/json").
 		Get(c.nsUri + "/api/v2/authorization/request/" + c.nsToken)
@@ -50,6 +65,8 @@ func (c *NSClient) Authorize(_ context.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	logRestyError(response, c)
 	c.jwt = result.Token
 }
 
@@ -73,18 +90,20 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 		SetResult(entries).
 		Get(c.nsUri + "/api/v3/devicestatus")
 
-	if c.logging {
-		log.Printf("Response: %v", response)
-	}
-
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	logRestyError(response, c)
 
 	for _, entry := range entries.Records {
 		if strings.HasPrefix(entry.Device, "openaps") {
 			entry.User = c.user
 			queue <- entry
+		} else {
+			if c.logging {
+				log.Print("Wrong prefix: ", entry.Device)
+			}
 		}
 	}
 }
@@ -110,13 +129,11 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 		SetAuthToken(c.jwt).
 		Get(c.nsUri + "/api/v3/treatments")
 
-	if c.logging {
-		log.Printf("Response: %v", response)
-	}
-
 	if err != nil {
 		log.Fatal(err)
 	}
+	logRestyError(response, c)
+
 	for _, entry := range entries.Records {
 		entry.User = c.user
 		queue <- entry
