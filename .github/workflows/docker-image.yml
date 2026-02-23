@@ -23,6 +23,7 @@ jobs:
       contents: read
       attestations: write
       id-token: write
+      pull-requests: write  # to write comment
     steps:
       - name: Check out the repo
         uses: actions/checkout@v5
