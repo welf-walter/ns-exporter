@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
-	"github.com/influxdata/influxdb-client-go/v2/api/write"
-	"github.com/peterbourgon/ff/v3"
 	"html"
 	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"sync"
+
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/api/write"
+	"github.com/peterbourgon/ff/v3"
 )
 
 var wg sync.WaitGroup
@@ -26,14 +27,15 @@ func main() {
 		mongoDb      = fs.String("mongo-db", "", "Mongo-db database name")
 		nsUri        = fs.String("ns-uri", "", "Nightscout server url to download from")
 		nsToken      = fs.String("ns-token", "", "Nigthscout server API Authorization Token")
-		limit        = fs.Int64("limit", 0, "number of records to read from mongo-db")
-		skip         = fs.Int64("skip", 0, "number of records to skip from mongo-db")
+		limit        = fs.Int64("limit", 10, "number of records to read")
+		skip         = fs.Int64("skip", 0, "number of records to skip")
 		influxUri    = fs.String("influx-uri", "", "InfluxDb uri to download from")
 		influxToken  = fs.String("influx-token", "", "InfluxDb access token")
 		influxOrg    = fs.String("influx-org", "ns", "InfluxDb organization to use")
 		influxBucket = fs.String("influx-bucket", "ns", "InfluxDb bucket to use")
 		configFile   = fs.String("config", "", "File to load configuration from")
 		user         = fs.String("user", "", "User name to be set on Influx record")
+		logging      = fs.Bool("log", false, "Enable logging")
 	)
 	if err := ff.Parse(fs, os.Args[1:], ff.WithEnvVarPrefix("NS_EXPORTER")); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -51,7 +53,7 @@ func main() {
 		NewExporterFromMongo(*mongoUri, *mongoDb, *user, ctx).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
 	if *nsUri != "" && *nsToken != "" {
-		NewExporterFromNS(*nsUri, *nsToken, *user).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
+		NewExporterFromNS(*nsUri, *nsToken, *user, *logging).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
 	var config = Config{}
 	if *configFile != "" {
@@ -84,7 +86,7 @@ func main() {
 				NewExporterFromMongo(fMongoUri, entry.MongoDb, entry.User, ctx).processClient(deviceStatuses, treatments, measurements, climit, cskip, ctx)
 			}
 			if entry.NsUri != "" && entry.NsToken != "" {
-				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User).processClient(deviceStatuses, treatments, measurements, climit, cskip, ctx)
+				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User, *logging).processClient(deviceStatuses, treatments, measurements, climit, cskip, ctx)
 			}
 		}
 	}

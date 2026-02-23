@@ -1,26 +1,57 @@
 # ns-exporter
 Nightscout exporter to InfluxDB
 
-### usage variants:
-1. inline
+It reads data from Nightscout via v3-api. See {{ns-uri}}/api3-docs for details.
+Then it pushes this data to an [InfluxDB](https://www.influxdata.com/).
+
+## usage variants:
+### 1. inline
 ```
 go build
 ./ns-exporter
 ```
-2. docker
+
+### 2. docker
+
+#### Option 1 - local build
+
+Build it locally:
 ```
-docker build -t ns-exporter .
-docker run -d ns-exporter:latest
+docker build -t welfwalter/ns-exporter .
 ```
 
-arguments:
+Upload to [welf-walter/welfwalter](https://hub.docker.com/repository/docker/welfwalter/welf-walter/general):
+```
+docker push welfwalter/ns-exporter:latest
+```
+
+#### Option 2 - central build
+  Pushes to `master` branch lead to a central build by [a Github Action](https://github.com/welf-walter/ns-exporter/actions).
+
+#### Run
+
+Start the container with your parameters:
+```
+docker run -d --rm \
+  --name ns-exporter \
+  --env NS_EXPORTER_NS_URI=https://abc.eu.nightscoutpro.com \
+  --env NS_EXPORTER_NS_TOKEN=$NIGHTSCOUTTOKEN \
+  --env NS_EXPORTER_INFLUX_URI=https://eu-central-1-1.aws.cloud2.influxdata.com \
+  --env NS_EXPORTER_INFLUX_TOKEN=$INFLUXTOKEN \
+  --env NS_EXPORTER_INFLUX_ORG=xxyyzz \
+  --env NS_EXPORTER_INFLUX_BUCKET=nightscout \
+  welfwalter/ns-exporter:latest
+```
+
+## Configuration
+Configuration is done via parameters:
 
 	mongo-uri       - MongoDb uri to download from
 	mongo-db        - MongoDb database name
 	ns-uri          - Nightscout server url to download from
 	ns-token        - Nigthscout server API Authorization Token
-	limit           - number of records to read from MongoDb
-	skip            - number of records to skip from MongoDb
+	limit           - number of records to read
+	skip            - number of records to skip
 	influx-uri      - InfluxDb uri to download from
 	influx-token    - InfluxDb access token
 	influx-org      - (optional, default = 'ns') InfluxDb organization to use
@@ -28,7 +59,7 @@ arguments:
 	influx-user-tag - (optional, default = 'unknown') InfluxDb 'user' tag value to be added to every record - to be able to store multiple users data in single bucket
 
 
-arguments also can be provided via env with `NS_EXPORTER_` prefix:
+Parameters also can be provided via env with `NS_EXPORTER_` prefix:
 
 	NS_EXPORTER_MONGO_URI=
 	NS_EXPORTER_MONGO_DB=
@@ -50,7 +81,7 @@ Since exporter only requires read access, creating role with two permissions wil
 - api:treatments:read
 - api:devicestatus:read
 
-### Presentation
+## Presentation
 
 I'm using Grafana dashboard for viewing data. To setup grafana with InfluxDB you need to follow InfluxDB's [instructions](https://docs.influxdata.com/influxdb/v2.3/tools/grafana/).
 The sample dashboard can be imported from `grafana.json`. It uses both InfluxQL and Flux datasources for different panels. Some can be omitted, some can be reworker based on other InfluxDB datasource query type. 

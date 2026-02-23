@@ -15,6 +15,7 @@ type NSClient struct {
 	nsToken string
 	user    string
 	jwt     string
+	logging bool
 }
 
 type nsDeviceStatusResult struct {
@@ -33,18 +34,34 @@ type nsJwtResult struct {
 	Token string `json:"token"`
 }
 
-func NewNSClient(uri string, token string, user string) *NSClient {
+func NewNSClient(uri string, token string, user string, logging bool) *NSClient {
 	return &NSClient{
 		nsUri:   strings.TrimRight(uri, "/"),
 		nsToken: token,
 		user:    user,
+		logging: logging,
+	}
+}
+
+func logRestyError(response *resty.Response, c *NSClient) {
+	if response.IsError() {
+		log.Println("Error in authorization")
+		log.Println("Status code: ", response.StatusCode())
+		log.Println("Status: ", response.Status())
+		if c.logging {
+			log.Println(response.String())
+		}
+	} else {
+		if c.logging {
+			log.Println("Status: ", response.Status())
+		}
 	}
 }
 
 func (c *NSClient) Authorize(_ context.Context) {
 	client := resty.New()
 	result := &nsJwtResult{}
-	_, err := client.R().
+	response, err := client.R().
 		SetResult(result).
 		SetHeader("Accept", "application/json").
 		Get(c.nsUri + "/api/v2/authorization/request/" + c.nsToken)
@@ -52,6 +69,8 @@ func (c *NSClient) Authorize(_ context.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	logRestyError(response, c)
 	c.jwt = result.Token
 	fmt.Println("JWT: ", c.jwt)
 }
@@ -64,7 +83,7 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 	client := resty.New()
 
 	entries := &nsDeviceStatusResult{}
-	_, err := client.R().
+	response, err := client.R().
 		SetQueryParams(map[string]string{
 			"skip":      strconv.FormatInt(skip, 10),
 			"limit":     strconv.FormatInt(limit, 10),
@@ -80,12 +99,18 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 		log.Fatal(err)
 	}
 
+	logRestyError(response, c)
 	fmt.Println("LoadDeviceStatuses status: ", entries.Status, "    #Entries: ", len(entries.Records))
+
 	for _, entry := range entries.Records {
 		log.Println(entry)
 		if strings.HasPrefix(entry.Device, "openaps") {
 			entry.User = c.user
 			queue <- entry
+		} else {
+			if c.logging {
+				log.Print("Wrong prefix: ", entry.Device)
+			}
 		}
 	}
 }
@@ -98,7 +123,8 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	client := resty.New()
 
 	entries := &nsTreatmentsResult{}
-	_, err := client.R().
+	response, err := client.R().
+		SetDebug(c.logging).
 		SetQueryParams(map[string]string{
 			"skip":      strconv.FormatInt(skip, 10),
 			"limit":     strconv.FormatInt(limit, 10),
@@ -113,7 +139,9 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	if err != nil {
 		log.Fatal(err)
 	}
+	logRestyError(response, c)
 	fmt.Println("LoadTreatments status: ", entries.Status, "    #Entries: ", len(entries.Records))
+
 	for _, entry := range entries.Records {
 		log.Println(entry)
 		entry.User = c.user
@@ -131,7 +159,7 @@ func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip 
 	resty.New().SetDebug(true)
 
 	entries := &nsMeasurementsResult{}
-	_, err := client.R().
+	response, err := client.R().
 		SetQueryParams(map[string]string{
 			"skip":  strconv.FormatInt(skip, 10),
 			"limit": strconv.FormatInt(limit, 10),
@@ -147,6 +175,7 @@ func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip 
 	if err != nil {
 		log.Fatal(err)
 	}
+	logRestyError(response, c)
 	fmt.Println("LoadMeasurements status: ", entries.Status, "    #Entries: ", len(entries.Records))
 	for _, entry := range entries.Records {
 		log.Println(entry)
