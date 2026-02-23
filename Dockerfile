@@ -11,10 +11,10 @@ FROM alpine
 LABEL org.opencontainers.image.source=https://github.com/welf-walter/ns-exporter
 LABEL org.opencontainers.image.description="Nightscout exporter to InfluxDB"
 
-COPY --from=build /ns-exporter /usr/local/bin/ns-exporter
+COPY --chmod=+x --from=build /ns-exporter /usr/local/bin/ns-exporter
 
 # taken over from https://gitlab.com/DjPicLLC/docker-cron-image
-COPY container/entrypoint.sh /entrypoint.sh
+COPY --chmod=+x container/entrypoint.sh /entrypoint.sh
 COPY container/crontab /crontab
 RUN crontab /crontab
 
