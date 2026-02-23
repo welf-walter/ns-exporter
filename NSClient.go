@@ -39,9 +39,9 @@ func NewNSClient(uri string, token string, user string, logging bool) *NSClient 
 	}
 }
 
-func logRestyError(response *resty.Response, c *NSClient) {
-	if response.IsError() {
-		log.Println("Error in authorization")
+func logRestyError(function string, response *resty.Response, c *NSClient) {
+	if !response.IsSuccess() {
+		log.Println("Error in ", function)
 		log.Println("Status code: ", response.StatusCode())
 		log.Println("Status: ", response.Status())
 		if c.logging {
@@ -49,7 +49,7 @@ func logRestyError(response *resty.Response, c *NSClient) {
 		}
 	} else {
 		if c.logging {
-			log.Println("Status: ", response.Status())
+			log.Println(function, " status: ", response.Status())
 		}
 	}
 }
@@ -66,7 +66,7 @@ func (c *NSClient) Authorize(_ context.Context) {
 		log.Fatal(err)
 	}
 
-	logRestyError(response, c)
+	logRestyError("Authorize", response, c)
 	c.jwt = result.Token
 }
 
@@ -94,7 +94,7 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 		log.Fatal(err)
 	}
 
-	logRestyError(response, c)
+	logRestyError("LoadDeviceStatuses", response, c)
 
 	for _, entry := range entries.Records {
 		if strings.HasPrefix(entry.Device, "openaps") {
@@ -117,7 +117,7 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 
 	entries := &nsTreatmentsResult{}
 	response, err := client.R().
-		SetDebug(c.logging).
+		//		SetDebug(c.logging).
 		SetQueryParams(map[string]string{
 			"skip":      strconv.FormatInt(skip, 10),
 			"limit":     strconv.FormatInt(limit, 10),
@@ -132,7 +132,7 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	if err != nil {
 		log.Fatal(err)
 	}
-	logRestyError(response, c)
+	logRestyError("LoadTreatments", response, c)
 
 	for _, entry := range entries.Records {
 		entry.User = c.user
