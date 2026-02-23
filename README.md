@@ -32,7 +32,7 @@ docker push welfwalter/ns-exporter:latest
 
 Start the container with your parameters:
 ```
-docker run -d  \
+docker run -d --rm \
   --name ns-exporter \
   --env NS_EXPORTER_NS_URI=https://abc.eu.nightscoutpro.com \
   --env NS_EXPORTER_NS_TOKEN=$NIGHTSCOUTTOKEN \

@@ -10,20 +10,10 @@ on:
   push:
     branches: [ "master" ]
     tags: [ "v*" ]
-#  pull_request: todo: would required appropriate tag creation
-#    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
-
-  build:
-    # maybe obsolete and replaced by push_to_registry
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build -t welfwalter/ns-exporter .
 
   push_to_registry:
     name: Push Docker image to Docker Hub
@@ -33,12 +23,13 @@ jobs:
       contents: read
       attestations: write
       id-token: write
+      pull-requests: write  # to write comment
     steps:
       - name: Check out the repo
         uses: actions/checkout@v5
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        uses: docker/login-action@v3
         with:
           username: welfwalter
           password: ${{ secrets.DOCKERACCESSTOKEN }}
@@ -49,10 +40,19 @@ jobs:
         with:
           images: welfwalter/ns-exporter
 
+      - # Add support for more platforms with QEMU (optional)
+        # https://github.com/docker/setup-qemu-action
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push Docker image
         id: push
-        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+        uses: docker/build-push-action@v6
         with:
+          platforms: linux/amd64,linux/arm64
           context: .
           file: ./Dockerfile
           push: true
@@ -65,3 +65,11 @@ jobs:
 #          subject-name: index.docker.io/my-docker-hub-namespace/my-docker-hub-repository
 #          subject-digest: ${{ steps.push.outputs.digest }}
 #          push-to-registry: true
+
+      - name: Comment PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: |
+            Docker images build for tags: ${{ steps.meta.outputs.tags }}
+            Digest: ${{ steps.push.outputs.digest }}
