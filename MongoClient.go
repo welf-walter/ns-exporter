@@ -156,6 +156,10 @@ func (c *MongoClient) LoadTreatments(queue chan NsTreatment, limit int64, skip i
 	}
 }
 
+func (c *MongoClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip int64, ctx context.Context) {
+	log.Fatal("not implemented")
+}
+
 func (c *MongoClient) Close(ctx context.Context) {
 	c.client.Disconnect(ctx)
 }

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"sync"
+	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
@@ -49,16 +50,17 @@ func main() {
 
 	deviceStatuses := make(chan NsEntry)
 	treatments := make(chan NsTreatment)
+	measurements := make(chan NsMeasurement)
 	influx := make(chan write.Point)
 
 	if *mongoUri != "" && *mongoDb != "" {
-		NewExporterFromMongo(*mongoUri, *mongoDb, *user, ctx).processClient(deviceStatuses, treatments, *limit, *skip, ctx)
+		NewExporterFromMongo(*mongoUri, *mongoDb, *user, ctx).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
 	if *nsUri != "" {
 		if *nsToken == "" {
 			log.Fatal("No ns-token supplied!")
 		}
-		NewExporterFromNS(*nsUri, *nsToken, *user, *logging).processClient(deviceStatuses, treatments, *limit, *skip, ctx)
+		NewExporterFromNS(*nsUri, *nsToken, *user, *logging).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
 	var config = Config{}
 	if *configFile != "" {
@@ -88,19 +90,20 @@ func main() {
 		for _, entry := range config.Imports {
 			var fMongoUri = combine(*mongoUri, entry.MongoUri)
 			if fMongoUri != "" && entry.MongoDb != "" {
-				NewExporterFromMongo(fMongoUri, entry.MongoDb, entry.User, ctx).processClient(deviceStatuses, treatments, climit, cskip, ctx)
+				NewExporterFromMongo(fMongoUri, entry.MongoDb, entry.User, ctx).processClient(deviceStatuses, treatments, measurements, climit, cskip, ctx)
 			}
 			if entry.NsUri != "" && entry.NsToken != "" {
-				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User, *logging).processClient(deviceStatuses, treatments, climit, cskip, ctx)
+				NewExporterFromNS(entry.NsUri, entry.NsToken, entry.User, *logging).processClient(deviceStatuses, treatments, measurements, climit, cskip, ctx)
 			}
 		}
 	}
 
 	var wgTransform = &sync.WaitGroup{}
-	wgTransform.Add(2)
+	wgTransform.Add(3)
 
 	go parseDeviceStatuses(wgTransform, influx, deviceStatuses)
 	go parseTreatments(wgTransform, influx, treatments)
+	go parseMeasurements(wgTransform, influx, measurements)
 
 	go func() {
 		wgInflux.Add(1)
@@ -134,6 +137,7 @@ func main() {
 	wg.Wait()
 	close(deviceStatuses)
 	close(treatments)
+	close(measurements)
 	wgTransform.Wait()
 	close(influx)
 	wgInflux.Wait()
@@ -242,7 +246,7 @@ func parseDeviceStatuses(group *sync.WaitGroup, influx chan write.Point, entries
 
 		fmt.Println("treatment time+: ", entry.OpenAps.IOB.Time, "iob:", entry.OpenAps.IOB.IOB, ", bg: ", entry.OpenAps.Suggested.Bg)
 	}
-	fmt.Println("total devicestatuses parsed: ", count)
+	log.Println("total devicestatuses parsed: ", count)
 }
 
 func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries chan NsTreatment) {
@@ -324,5 +328,37 @@ func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries cha
 		fmt.Println("time: ", point.Time(), ", type: ", entry.EventType)
 	}
 
-	fmt.Println("total treatments parsed: ", count)
+	log.Println("total treatments parsed: ", count)
+}
+
+func parseMeasurements(group *sync.WaitGroup, influx chan write.Point, entries chan NsMeasurement) {
+	defer group.Done()
+
+	var count = 0
+	for entry := range entries {
+
+		// times are a little bit different:
+		//log.Printf("%v = %v = %v", entry.TimestampMs, entry.TimestampStr, time.UnixMilli(entry.TimestampMs))
+		// entry.TimestampMs:  2026/02/24 22:39:01 1771966820000
+		// entry.TimestampStr: 2026-02-24T21:00:20.000Z
+		// time:               2026-02-24 22:00:20 +0100 CET
+		point := influxdb2.NewPointWithMeasurement("measurements").
+			SetTime(time.UnixMilli(entry.TimestampMs))
+
+		if entry.User != "" {
+			point.AddTag("user", entry.User)
+		}
+
+		point.AddTag("arrow", entry.Arrow)
+		point.AddTag("device", entry.Device)
+		point.AddTag("type", entry.Type)
+		point.AddField("sensorglucose", entry.SensorGlucose)
+		point.AddField("trend", entry.Trend)
+
+		count++
+		influx <- *point
+		fmt.Println("time: ", point.Time(), ", sg =", entry.SensorGlucose, " (", entry.Arrow, ")")
+	}
+
+	log.Println("total measurements parsed: ", count)
 }
