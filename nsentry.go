@@ -84,7 +84,7 @@ type NsTreatment struct {
 //	}
 type NsMeasurement struct {
 	TimestampStr  string `json:"dateString,omitempty"`
-	TimestampMs   int    `json:"date,omitempty"`
+	TimestampMs   int64  `json:"date,omitempty"`
 	SensorGlucose int    `json:"sgv,omitempty"`
 	Trend         int    `json:"trend,omitempty"`
 	Arrow         string `json:"direction,omitempty"`

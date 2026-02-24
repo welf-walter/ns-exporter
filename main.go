@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"sync"
+	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
@@ -98,11 +99,11 @@ func main() {
 	}
 
 	var wgTransform = &sync.WaitGroup{}
-	wgTransform.Add(2)
+	wgTransform.Add(3)
 
 	go parseDeviceStatuses(wgTransform, influx, deviceStatuses)
 	go parseTreatments(wgTransform, influx, treatments)
-	//go parseMeasurements(wgTransform, influx, measurements)
+	go parseMeasurements(wgTransform, influx, measurements)
 
 	go func() {
 		wgInflux.Add(1)
@@ -245,7 +246,7 @@ func parseDeviceStatuses(group *sync.WaitGroup, influx chan write.Point, entries
 
 		fmt.Println("treatment time+: ", entry.OpenAps.IOB.Time, "iob:", entry.OpenAps.IOB.IOB, ", bg: ", entry.OpenAps.Suggested.Bg)
 	}
-	fmt.Println("total devicestatuses parsed: ", count)
+	log.Println("total devicestatuses parsed: ", count)
 }
 
 func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries chan NsTreatment) {
@@ -327,5 +328,37 @@ func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries cha
 		fmt.Println("time: ", point.Time(), ", type: ", entry.EventType)
 	}
 
-	fmt.Println("total treatments parsed: ", count)
+	log.Println("total treatments parsed: ", count)
+}
+
+func parseMeasurements(group *sync.WaitGroup, influx chan write.Point, entries chan NsMeasurement) {
+	defer group.Done()
+
+	var count = 0
+	for entry := range entries {
+
+		// times are a little bit different:
+		//log.Printf("%v = %v = %v", entry.TimestampMs, entry.TimestampStr, time.UnixMilli(entry.TimestampMs))
+		// entry.TimestampMs:  2026/02/24 22:39:01 1771966820000
+		// entry.TimestampStr: 2026-02-24T21:00:20.000Z
+		// time:               2026-02-24 22:00:20 +0100 CET
+		point := influxdb2.NewPointWithMeasurement("measurements").
+			SetTime(time.UnixMilli(entry.TimestampMs))
+
+		if entry.User != "" {
+			point.AddTag("user", entry.User)
+		}
+
+		point.AddTag("arrow", entry.Arrow)
+		point.AddTag("device", entry.Device)
+		point.AddTag("type", entry.Type)
+		point.AddField("sensorglucose", entry.SensorGlucose)
+		point.AddField("trend", entry.Trend)
+
+		count++
+		influx <- *point
+		fmt.Println("time: ", point.Time(), ", sg =", entry.SensorGlucose, " (", entry.Arrow, ")")
+	}
+
+	log.Println("total measurements parsed: ", count)
 }

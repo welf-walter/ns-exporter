@@ -163,9 +163,9 @@ func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip 
 	entries := &nsMeasurementsResult{}
 	response, err := client.R().
 		SetQueryParams(map[string]string{
-			"skip":  strconv.FormatInt(skip, 10),
-			"limit": strconv.FormatInt(limit, 10),
-			//"sort$desc": "created_at",
+			"skip":      strconv.FormatInt(skip, 10),
+			"limit":     strconv.FormatInt(limit, 10),
+			"sort$desc": "date",
 		}).
 		SetResult(entries).
 		EnableTrace().
