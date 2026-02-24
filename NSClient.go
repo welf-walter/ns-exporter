@@ -43,9 +43,9 @@ func NewNSClient(uri string, token string, user string, logging bool) *NSClient 
 	}
 }
 
-func logRestyError(response *resty.Response, c *NSClient) {
-	if response.IsError() {
-		log.Println("Error in authorization")
+func logRestyError(function string, response *resty.Response, c *NSClient) {
+	if !response.IsSuccess() {
+		log.Println("Error in ", function)
 		log.Println("Status code: ", response.StatusCode())
 		log.Println("Status: ", response.Status())
 		if c.logging {
@@ -53,7 +53,7 @@ func logRestyError(response *resty.Response, c *NSClient) {
 		}
 	} else {
 		if c.logging {
-			log.Println("Status: ", response.Status())
+			log.Println(function, " status: ", response.Status())
 		}
 	}
 }
@@ -70,7 +70,7 @@ func (c *NSClient) Authorize(_ context.Context) {
 		log.Fatal(err)
 	}
 
-	logRestyError(response, c)
+	logRestyError("Authorize", response, c)
 	c.jwt = result.Token
 	// fmt.Println("JWT: ", c.jwt) // don't enable in production!
 }
@@ -99,8 +99,8 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 		log.Fatal(err)
 	}
 
-	logRestyError(response, c)
 	fmt.Println("LoadDeviceStatuses status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	logRestyError("LoadDeviceStatuses", response, c)
 
 	for _, entry := range entries.Records {
 		if c.logging {
@@ -141,8 +141,8 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	if err != nil {
 		log.Fatal(err)
 	}
-	logRestyError(response, c)
 	fmt.Println("LoadTreatments status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	logRestyError("LoadTreatments", response, c)
 
 	for _, entry := range entries.Records {
 		if c.logging {
@@ -177,8 +177,8 @@ func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip 
 	if err != nil {
 		log.Fatal(err)
 	}
-	logRestyError(response, c)
 	fmt.Println("LoadMeasurements status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	logRestyError("LoadMeasurements", response, c)
 	for _, entry := range entries.Records {
 		if c.logging {
 			log.Println(entry)

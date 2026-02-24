@@ -41,6 +41,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+	if *logging {
+		log.Println("Logging is enabled")
+	}
 
 	ctx := context.Background()
 
@@ -52,7 +55,10 @@ func main() {
 	if *mongoUri != "" && *mongoDb != "" {
 		NewExporterFromMongo(*mongoUri, *mongoDb, *user, ctx).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
-	if *nsUri != "" && *nsToken != "" {
+	if *nsUri != "" {
+		if *nsToken == "" {
+			log.Fatal("No ns-token supplied!")
+		}
 		NewExporterFromNS(*nsUri, *nsToken, *user, *logging).processClient(deviceStatuses, treatments, measurements, *limit, *skip, ctx)
 	}
 	var config = Config{}
