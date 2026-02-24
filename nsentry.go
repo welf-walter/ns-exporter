@@ -86,8 +86,11 @@ type NsMeasurement struct {
 	TimestampStr  string `json:"dateString,omitempty"`
 	TimestampMs   int    `json:"date,omitempty"`
 	SensorGlucose int    `json:"sgv,omitempty"`
+	Trend         int    `json:"trend,omitempty"`
 	Arrow         string `json:"direction,omitempty"`
 	Device        string `json:"device,omitempty"`
+	Type          string `json:"type,omitempty"` // "sgv", "mbg", "cal", "etc"
+	User          string `json:"-"`
 }
 
 type Config struct {

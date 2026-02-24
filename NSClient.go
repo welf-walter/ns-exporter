@@ -72,7 +72,7 @@ func (c *NSClient) Authorize(_ context.Context) {
 
 	logRestyError(response, c)
 	c.jwt = result.Token
-	fmt.Println("JWT: ", c.jwt)
+	// fmt.Println("JWT: ", c.jwt) // don't enable in production!
 }
 
 func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int64, _ context.Context) {
@@ -103,7 +103,9 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 	fmt.Println("LoadDeviceStatuses status: ", entries.Status, "    #Entries: ", len(entries.Records))
 
 	for _, entry := range entries.Records {
-		log.Println(entry)
+		if c.logging {
+			log.Println(entry)
+		}
 		if strings.HasPrefix(entry.Device, "openaps") {
 			entry.User = c.user
 			queue <- entry
@@ -124,7 +126,7 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 
 	entries := &nsTreatmentsResult{}
 	response, err := client.R().
-		SetDebug(c.logging).
+		//		SetDebug(c.logging).
 		SetQueryParams(map[string]string{
 			"skip":      strconv.FormatInt(skip, 10),
 			"limit":     strconv.FormatInt(limit, 10),
@@ -143,7 +145,9 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	fmt.Println("LoadTreatments status: ", entries.Status, "    #Entries: ", len(entries.Records))
 
 	for _, entry := range entries.Records {
-		log.Println(entry)
+		if c.logging {
+			log.Println(entry)
+		}
 		entry.User = c.user
 		queue <- entry
 	}
@@ -155,8 +159,6 @@ func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip 
 	fmt.Println("LoadMeasurements from NS, limit: ", limit, ", skip: ", skip)
 
 	client := resty.New()
-
-	resty.New().SetDebug(true)
 
 	entries := &nsMeasurementsResult{}
 	response, err := client.R().
@@ -178,9 +180,11 @@ func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip 
 	logRestyError(response, c)
 	fmt.Println("LoadMeasurements status: ", entries.Status, "    #Entries: ", len(entries.Records))
 	for _, entry := range entries.Records {
-		log.Println(entry)
+		if c.logging {
+			log.Println(entry)
+		}
 
-		//entry.User = c.user
+		entry.User = c.user
 		queue <- entry
 	}
 }
