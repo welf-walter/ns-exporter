@@ -129,7 +129,7 @@ func main() {
 			}
 		}
 
-		log.Println("total data points writen: ", count)
+		log.Println("total data points written: ", count)
 
 	}()
 
@@ -247,7 +247,9 @@ func parseDeviceStatuses(group *sync.WaitGroup, influx chan write.Point, entries
 			log.Println("treatment time+: ", entry.OpenAps.IOB.Time, "iob:", entry.OpenAps.IOB.IOB, ", bg: ", entry.OpenAps.Suggested.Bg)
 		}
 	}
-	log.Println("total devicestatuses parsed: ", count)
+	if logging {
+		log.Println("total devicestatuses parsed: ", count)
+	}
 }
 
 func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries chan NsTreatment, logging bool) {
