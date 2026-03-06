@@ -61,7 +61,7 @@ type NsTreatment struct {
 	EnteredBy    string    `json:"enteredBy"`
 	EventType    string    `json:"eventType"`
 	Carbs        int       `json:"carbs,omitempty"`
-	Duration     int       `json:"duration,omitempty"`
+	Duration     float32   `json:"duration,omitempty"`
 	Insulin      float64   `json:"insulin,omitempty"`
 	IsSMB        bool      `json:"isSMB,omitempty"`
 	Notes        string    `json:"notes,omitempty"`
