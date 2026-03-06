@@ -323,6 +323,12 @@ func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries cha
 			point.AddField("notes", entry.EventType)
 		}
 
+		if entry.Glucose != "" {
+			point.AddField("glucose", entry.Glucose)
+			point.AddTag("glucoseType", entry.GlucoseType)
+			point.AddTag("units", entry.Units)
+		}
+
 		count++
 		influx <- *point
 		fmt.Println("time: ", point.Time(), ", type: ", entry.EventType)
@@ -352,8 +358,11 @@ func parseMeasurements(group *sync.WaitGroup, influx chan write.Point, entries c
 		point.AddTag("arrow", entry.Arrow)
 		point.AddTag("device", entry.Device)
 		point.AddTag("type", entry.Type)
+		point.AddTag("units", entry.Units)
+		point.AddTag("device", entry.Device)
 		point.AddField("sensorglucose", entry.SensorGlucose)
 		point.AddField("trend", entry.Trend)
+		point.AddField("noise", entry.Noise)
 
 		count++
 		influx <- *point
