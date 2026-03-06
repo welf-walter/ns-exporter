@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -78,7 +77,9 @@ func (c *NSClient) Authorize(_ context.Context) {
 func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int64, _ context.Context) {
 	defer wg.Done()
 
-	fmt.Println("LoadDeviceStatuses from NS, limit: ", limit, ", skip: ", skip)
+	if c.logging {
+		log.Println("LoadDeviceStatuses from NS, limit: ", limit, ", skip: ", skip)
+	}
 
 	client := resty.New()
 
@@ -99,7 +100,9 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 		log.Fatal(err)
 	}
 
-	fmt.Println("LoadDeviceStatuses status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	if c.logging {
+		log.Println("LoadDeviceStatuses status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	}
 	logRestyError("LoadDeviceStatuses", response, c)
 
 	for _, entry := range entries.Records {
@@ -120,7 +123,9 @@ func (c *NSClient) LoadDeviceStatuses(queue chan NsEntry, limit int64, skip int6
 func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int64, _ context.Context) {
 	defer wg.Done()
 
-	fmt.Println("LoadTreatments from NS, limit: ", limit, ", skip: ", skip)
+	if c.logging {
+		log.Println("LoadTreatments from NS, limit: ", limit, ", skip: ", skip)
+	}
 
 	client := resty.New()
 
@@ -141,7 +146,9 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("LoadTreatments status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	if c.logging {
+		log.Println("LoadTreatments status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	}
 	logRestyError("LoadTreatments", response, c)
 
 	for _, entry := range entries.Records {
@@ -156,7 +163,9 @@ func (c *NSClient) LoadTreatments(queue chan NsTreatment, limit int64, skip int6
 func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip int64, _ context.Context) {
 	defer wg.Done()
 
-	fmt.Println("LoadMeasurements from NS, limit: ", limit, ", skip: ", skip)
+	if c.logging {
+		log.Println("LoadMeasurements from NS, limit: ", limit, ", skip: ", skip)
+	}
 
 	client := resty.New()
 
@@ -177,7 +186,9 @@ func (c *NSClient) LoadMeasurements(queue chan NsMeasurement, limit int64, skip 
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("LoadMeasurements status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	if c.logging {
+		log.Println("LoadMeasurements status: ", entries.Status, "    #Entries: ", len(entries.Records))
+	}
 	logRestyError("LoadMeasurements", response, c)
 	for _, entry := range entries.Records {
 		if c.logging {

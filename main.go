@@ -101,9 +101,9 @@ func main() {
 	var wgTransform = &sync.WaitGroup{}
 	wgTransform.Add(3)
 
-	go parseDeviceStatuses(wgTransform, influx, deviceStatuses)
-	go parseTreatments(wgTransform, influx, treatments)
-	go parseMeasurements(wgTransform, influx, measurements)
+	go parseDeviceStatuses(wgTransform, influx, deviceStatuses, *logging)
+	go parseTreatments(wgTransform, influx, treatments, *logging)
+	go parseMeasurements(wgTransform, influx, measurements, *logging)
 
 	go func() {
 		wgInflux.Add(1)
@@ -118,19 +118,18 @@ func main() {
 		for point := range influx {
 
 			if len(point.FieldList()) == 0 && len(point.TagList()) == 0 {
-
-				fmt.Println("empty point for time: ", point.Time(), " of type: ", point.Name())
+				log.Println("ERROR: empty point for time: ", point.Time(), " of type: ", point.Name())
 				continue
 			}
 
 			err := writeAPI.WritePoint(ctx, &point)
 			count++
 			if err != nil {
-				fmt.Println("error writing: ", point.Time(), ", name: ", point.Name())
+				log.Println("ERROR: error writing: ", point.Time(), ", name: ", point.Name())
 			}
 		}
 
-		fmt.Println("total writen: ", count)
+		log.Println("total data points written: ", count)
 
 	}()
 
@@ -166,7 +165,7 @@ func fail(message string) {
 	os.Exit(1)
 }
 
-func parseDeviceStatuses(group *sync.WaitGroup, influx chan write.Point, entries chan NsEntry) {
+func parseDeviceStatuses(group *sync.WaitGroup, influx chan write.Point, entries chan NsEntry, logging bool) {
 	defer group.Done()
 
 	reg := regexp.MustCompile("Dev: (?P<dev>[-0-9.]+),.*ISF: (?:(?P<isf_nt>[-0-9.]+)/(?P<isf_bg>[-0-9.]+)+=)?(?P<isf>[-0-9.]+),.*CR: (?P<cr>[-0-9.]+)")
@@ -194,7 +193,7 @@ func parseDeviceStatuses(group *sync.WaitGroup, influx chan write.Point, entries
 				lasttick == tick &&
 				tick != 0.0 {
 				// deduplication, because nightscout still allows duplicate records to be added
-				fmt.Println("skipping duplicate bg record: ", entry.OpenAps.IOB.Time, ", bg: ", entry.OpenAps.Suggested.Bg, ", tick: ", tick)
+				log.Println("WARNING: skipping duplicate bg record: ", entry.OpenAps.IOB.Time, ", bg: ", entry.OpenAps.Suggested.Bg, ", tick: ", tick)
 				continue
 			}
 
@@ -244,12 +243,16 @@ func parseDeviceStatuses(group *sync.WaitGroup, influx chan write.Point, entries
 		count++
 		influx <- *point
 
-		fmt.Println("treatment time+: ", entry.OpenAps.IOB.Time, "iob:", entry.OpenAps.IOB.IOB, ", bg: ", entry.OpenAps.Suggested.Bg)
+		if logging {
+			log.Println("treatment time+: ", entry.OpenAps.IOB.Time, "iob:", entry.OpenAps.IOB.IOB, ", bg: ", entry.OpenAps.Suggested.Bg)
+		}
 	}
-	log.Println("total devicestatuses parsed: ", count)
+	if logging {
+		log.Println("total devicestatuses parsed: ", count)
+	}
 }
 
-func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries chan NsTreatment) {
+func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries chan NsTreatment, logging bool) {
 	defer group.Done()
 
 	var noted = map[string]bool{
@@ -323,15 +326,25 @@ func parseTreatments(group *sync.WaitGroup, influx chan write.Point, entries cha
 			point.AddField("notes", entry.EventType)
 		}
 
+		if entry.Glucose != "" {
+			point.AddField("glucose", entry.Glucose)
+			point.AddTag("glucoseType", entry.GlucoseType)
+			point.AddTag("units", entry.Units)
+		}
+
 		count++
 		influx <- *point
-		fmt.Println("time: ", point.Time(), ", type: ", entry.EventType)
+		if logging {
+			log.Println("time: ", point.Time(), ", type: ", entry.EventType)
+		}
 	}
 
-	log.Println("total treatments parsed: ", count)
+	if logging {
+		log.Println("total treatments parsed: ", count)
+	}
 }
 
-func parseMeasurements(group *sync.WaitGroup, influx chan write.Point, entries chan NsMeasurement) {
+func parseMeasurements(group *sync.WaitGroup, influx chan write.Point, entries chan NsMeasurement, logging bool) {
 	defer group.Done()
 
 	var count = 0
@@ -352,13 +365,20 @@ func parseMeasurements(group *sync.WaitGroup, influx chan write.Point, entries c
 		point.AddTag("arrow", entry.Arrow)
 		point.AddTag("device", entry.Device)
 		point.AddTag("type", entry.Type)
+		point.AddTag("units", entry.Units)
+		point.AddTag("device", entry.Device)
 		point.AddField("sensorglucose", entry.SensorGlucose)
 		point.AddField("trend", entry.Trend)
+		point.AddField("noise", entry.Noise)
 
 		count++
 		influx <- *point
-		fmt.Println("time: ", point.Time(), ", sg =", entry.SensorGlucose, " (", entry.Arrow, ")")
+		if logging {
+			log.Println("time: ", point.Time(), ", sg =", entry.SensorGlucose, " (", entry.Arrow, ")")
+		}
 	}
 
-	log.Println("total measurements parsed: ", count)
+	if logging {
+		log.Println("total measurements parsed: ", count)
+	}
 }
